@@ -1,0 +1,17 @@
+{
+    "programs": [
+
+    ],
+    "stream_groups": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3"
+        }
+    ],
+    "format": {
+        "duration": "99.799365",
+        "size": "2398776"
+    }
+}

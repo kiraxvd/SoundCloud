@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SoundCloud · MP3 e JSON</title>
+<style>body{font:16px system-ui;background:#111218;color:#eef0f8;margin:0}main{max-width:900px;margin:48px auto;padding:24px}h1{font-size:32px}p{color:#b9bdce}form{display:flex;gap:12px;flex-wrap:wrap}input{flex:1;min-width:220px;background:#202330;color:inherit;border:1px solid #50556b;padding:14px;border-radius:8px}button,.link{background:#ff7139;color:#17110e;font:inherit;font-weight:650;border:0;border-radius:8px;padding:14px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}section{background:#1c1e29;border:1px solid #333748;border-radius:12px;padding:24px;margin-top:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:520px;overflow:auto;font-size:13px}audio{width:100%;margin:20px 0}.link{display:inline-block;text-decoration:none}#status{min-height:24px}img{width:100px;border-radius:8px;float:right;margin:0 0 16px 16px}small{color:#b9bdce}</style>
+<main><small>SOUNDCLOUD / FERRAMENTA LOCAL</small><h1>Consultar uma faixa e salvar MP3</h1><p>Cole o link para ver os metadados, comentários e formatos disponíveis. Salve o áudio e o retorno JSON na pasta de downloads do projeto.</p>
+<form id="form"><input id="url" aria-label="URL da faixa" type="url" required placeholder="https://soundcloud.com/artista/faixa"><button type="submit">Consultar</button><button id="download" type="button">Salvar MP3 + JSON</button></form>
+<p id="status" role="status" aria-live="polite"></p><section id="result" hidden><img id="art" alt="Capa da faixa" hidden><h2 id="title"></h2><p id="artist"></p><p id="details"></p><p id="warnings"></p><audio id="player" controls hidden></audio><a id="file" class="link" hidden>Baixar MP3</a><details open><summary>Retorno JSON</summary><pre id="json"></pre></details></section></main>
+<script>
+const $ = id => document.getElementById(id);
+const buttons = document.querySelectorAll('button');
+async function run(save) {
+ if (!$('url').reportValidity()) return;
+ buttons.forEach(b=>b.disabled=true);
+ $('status').textContent=save?'Obtendo a faixa e convertendo para MP3…':'Consultando o SoundCloud…';
+ $('result').hidden=true; $('player').pause(); $('player').removeAttribute('src'); $('player').hidden=true; $('file').hidden=true;
+ try {
+  const url=$('url').value.trim();
+  const response=await fetch(save?'/download':'/scrape?url='+encodeURIComponent(url),save?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}:{});
+  const data=await response.json();
+  if(!response.ok) throw new Error(typeof data.detail==='string'?data.detail:JSON.stringify(data.detail));
+  $('title').textContent=data.track.title;
+  $('artist').textContent=data.user.username||'';
+  $('details').textContent=[Math.round((data.track.duration_ms||0)/1000)+' segundos',data.comments.length+' comentários',data.transcodings.map(t=>t.preset).join(', ')].join(' · ');
+  $('warnings').textContent=(data.warnings||[]).join(' ');
+  const image=data.track.artwork_url; $('art').hidden=true;
+  if(image && new URL(image).protocol==='https:') { $('art').src=image; $('art').hidden=false; }
+  $('json').textContent=JSON.stringify(data,null,2);
+  if(data.download){ $('file').href=data.download.url; $('file').download=data.download.filename; $('file').hidden=false; $('player').src=data.download.url; $('player').hidden=false; }
+  $('result').hidden=false; $('status').textContent=save?'MP3 e JSON salvos. O áudio está pronto para ouvir e baixar.':'Consulta concluída.';
+ }catch(error){$('status').textContent='Erro: '+error.message;}
+ finally{buttons.forEach(b=>b.disabled=false);}
+}
+$('form').addEventListener('submit',e=>{e.preventDefault();run(false)});
+$('download').addEventListener('click',()=>run(true));
+</script></html>
